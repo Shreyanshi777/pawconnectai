@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paw Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-paw" aria-hidden="true">
+        <img src="/static/logo.svg" alt="" class="brand-logo-image">
+      </span>
+      <span class="logo-text">Paw Connect</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item" id="nav-home" data-page="home">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="nav-icon-svg">
+            <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"></path>
+          </svg>
+        </span>
+        <span>Home</span>
+      </button>
+      <button class="nav-item active" id="nav-scan" data-page="scan">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="nav-icon-svg">
+            <path d="M8 7.5 9.5 5h5L16 7.5H19A2 2 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-8A2 2 0 0 1 5 7.5z"></path>
+            <circle cx="12" cy="13.5" r="3.5" class="nav-icon-cut"></circle>
+          </svg>
+        </span>
+        <span>Scan Animal</span>
+      </button>
+      <button class="nav-item" id="nav-carebot" data-page="carebot">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="nav-icon-svg">
+            <path d="M6 6.5h12A2.5 2.5 0 0 1 20.5 9v6A2.5 2.5 0 0 1 18 17.5H11l-4.5 3V17.5H6A2.5 2.5 0 0 1 3.5 15V9A2.5 2.5 0 0 1 6 6.5z"></path>
+            <path d="M12 9.2l.8 1.7 1.9.2-1.4 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.4-1.2 1.9-.2z" class="nav-icon-cut"></path>
+          </svg>
+        </span>
+        <span>Care Bot</span>
+      </button>
+      <button class="nav-item" id="nav-dashboard" data-page="dashboard">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="nav-icon-svg">
+            <rect x="4" y="4" width="7" height="7" rx="1.5"></rect>
+            <rect x="13" y="4" width="7" height="7" rx="1.5"></rect>
+            <rect x="4" y="13" width="7" height="7" rx="1.5"></rect>
+            <rect x="13" y="13" width="7" height="7" rx="1.5"></rect>
+          </svg>
+        </span>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" id="nav-rescue" data-page="rescue">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="nav-icon-svg">
+            <path d="M8.4 4.8c.6-.6 1.5-.8 2.2-.3l2 1.4c.8.5 1 1.5.6 2.3l-1.1 1.8a1 1 0 0 0 .1 1.2l.5.6c1.2 1.3 2.5 2.6 3.9 3.8l.6.5a1 1 0 0 0 1.2.1l1.8-1.1c.8-.5 1.8-.2 2.3.6l1.4 2c.5.7.3 1.6-.3 2.2l-1.2 1.2c-1.1 1.1-2.7 1.6-4.2 1.1-2.8-.9-5.6-3-8.2-5.6-2.6-2.6-4.7-5.4-5.6-8.2-.5-1.5 0-3.1 1.1-4.2z"></path>
+          </svg>
+        </span>
+        <span>Rescue Contacts</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="location-badge" id="locationBadge">
+        <span class="loc-dot" id="locDot"></span>
+        <span id="locationText">Location off</span>
+      </div>
+      <button class="loc-btn" id="locBtn" type="button">Enable GPS</button>
+    </div>
+  </aside>
+
+  <div class="mobile-bar">
+    <button class="hamburger" id="mobileMenuBtn" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="hamburger-lines" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    </button>
+    <span class="mobile-logo">
+      <span class="logo-paw" aria-hidden="true">
+        <img src="/static/logo.svg" alt="" class="brand-logo-image">
+      </span>
+      <span class="logo-text">Paw Connect</span>
+    </span>
+    <span></span>
+  </div>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <main class="main-content">
+    <section class="page" id="page-home">
+      <div class="home-panel home-panel-intro">
+        <div class="home-hero">
+          <h1 class="hero-title">Help when animals<br><em>need it most</em></h1>
+          <p class="hero-subtitle">
+            Paw Connect uses AI-powered image analysis to detect domestic animals, estimate health condition,
+            generate clear rescue-style reports, and guide users toward the next safe step.
+          </p>
+          <button class="btn-primary" type="button" data-page="scan">Start Scanning</button>
+        </div>
+
+        <div class="feature-grid feature-grid-primary">
+          <div class="feature-card">
+            <div class="feature-icon teal" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="feature-icon-svg">
+                <path d="M12 3 14.2 7.8 19 10l-4.8 2.2L12 17l-2.2-4.8L5 10l4.8-2.2z"></path>
+                <circle cx="12" cy="10" r="1.5" class="feature-icon-cut"></circle>
+              </svg>
+            </div>
+            <h3>AI Detection</h3>
+            <p>Animal detection with a health triage layer that helps normal users understand urgency quickly.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon amber" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="feature-icon-svg">
+                <path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2v-13a2.5 2.5 0 0 1 2-2.5z"></path>
+                <path d="M14 3.5v4h4" class="feature-icon-cut"></path>
+                <path d="M8 12.5h8M8 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"></path>
+              </svg>
+            </div>
+            <h3>Vet-Style Reports</h3>
+            <p>Condition summary, urgency, findings, and recommended actions in one structured output.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-panel home-panel-features">
+        <div class="feature-grid feature-grid-secondary">
+          <div class="feature-card">
+            <div class="feature-icon coral" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="feature-icon-svg">
+                <path d="M6 6.5h12A2.5 2.5 0 0 1 20.5 9v6A2.5 2.5 0 0 1 18 17.5H11l-4.5 3V17.5H6A2.5 2.5 0 0 1 3.5 15V9A2.5 2.5 0 0 1 6 6.5z"></path>
+                <path d="M12 9.2l.8 1.7 1.9.2-1.4 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.4-1.2 1.9-.2z" class="feature-icon-cut"></path>
+              </svg>
+            </div>
+            <h3>Care Bot</h3>
+            <p>A dedicated assistant for domestic animal first-aid, pet care guidance, and emergency awareness.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon blue" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="feature-icon-svg">
+                <path d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11z"></path>
+                <circle cx="12" cy="10" r="2.3" class="feature-icon-cut"></circle>
+              </svg>
+            </div>
+            <h3>Location Services</h3>
+            <p>Browser geolocation, image metadata fallback, rescue contacts, and nearby vet support.</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="page active" id="page-scan">
+      <div class="page-header">
+        <h1 class="scan-title">
+          <span class="scan-title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="scan-title-svg">
+              <path d="M8 7.5 9.5 5h5L16 7.5H19A2 2 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-8A2 2 0 0 1 5 7.5z"></path>
+              <circle cx="12" cy="13.5" r="3.5" class="scan-title-cut"></circle>
+            </svg>
+          </span>
+          <span>Scan Animal</span>
+        </h1>
+        <p>Capture or upload an image to analyse the animal's health condition</p>
+      </div>
+
+      <div class="scan-layout">
+        <div class="scan-panel">
+          <div class="upload-zone" id="uploadZone">
+            <div class="upload-placeholder" id="uploadPlaceholder">
+              <div class="upload-icon">SCAN</div>
+              <p class="upload-label">Drop image here or</p>
+              <div class="upload-btns">
+                <label class="btn-secondary" for="fileInput">
+                  Upload File
+                  <input type="file" id="fileInput" accept="image/*" hidden>
+                </label>
+                <button class="btn-secondary" id="openCameraBtn" type="button">Open Camera</button>
+              </div>
+            </div>
+            <img id="previewImg" class="preview-img hidden" alt="Preview">
+            <video id="cameraFeed" class="camera-feed hidden" autoplay playsinline></video>
+          </div>
+
+          <div id="cameraControls" class="camera-controls hidden">
+            <button class="btn-primary" id="captureBtn" type="button">Capture Photo</button>
+            <button class="btn-ghost" id="closeCameraBtn" type="button">Cancel</button>
+          </div>
+
+          <div class="scan-name-field">
+            <label for="scanAnimalName">You can name the animal</label>
+            <input id="scanAnimalName" type="text" placeholder="Enter animal name">
+          </div>
+
+          <div class="scan-options">
+            <label class="checkbox-row">
+              <input type="checkbox" id="rescueCheckbox">
+              <span>Request rescue assistance if needed</span>
+            </label>
+          </div>
+
+          <button class="btn-scan" id="analyseBtn" type="button" disabled>
+            <span class="btn-scan-icon">GO</span>
+            Analyse Health
+          </button>
+
+          <canvas id="hiddenCanvas" class="hidden"></canvas>
+        </div>
+
+        <div class="result-panel" id="resultPanel">
+          <div class="result-idle" id="resultIdle">
+            <div class="idle-icon">PAW</div>
+            <p>Upload an image to see the animal health report here</p>
+          </div>
+
+          <div class="result-loading hidden" id="resultLoading">
+            <div class="loader-ring"></div>
+            <p>Analysing image...</p>
+          </div>
+
+          <div class="report hidden" id="reportContent">
+            <button class="report-close-btn" id="closeScanReportBtn" type="button" aria-label="Close current scan report">X</button>
+            <img id="reportPreviewImage" class="report-preview-image hidden" alt="Scanned animal report image">
+            <div class="image-confidence-note" id="reportConfidenceNote">AI--</div>
+
+            <div class="report-header">
+              <div class="report-header-left">
+                <h2 id="reportAnimal">-</h2>
+                <span class="report-animal-type" id="reportAnimalType">-</span>
+                <span class="report-animal-breed hidden" id="reportBreedGuess">-</span>
+              </div>
+              <div class="report-header-actions">
+                <button class="report-icon-btn" type="button" data-report-action="rescue" title="Nearby contacts" aria-label="Nearby contacts">
+                  <svg viewBox="0 0 24 24" class="report-icon-svg" aria-hidden="true">
+                    <path d="M8.4 4.8c.6-.6 1.5-.8 2.2-.3l2 1.4c.8.5 1 1.5.6 2.3l-1.1 1.8a1 1 0 0 0 .1 1.2l.5.6c1.2 1.3 2.5 2.6 3.9 3.8l.6.5a1 1 0 0 0 1.2.1l1.8-1.1c.8-.5 1.8-.2 2.3.6l1.4 2c.5.7.3 1.6-.3 2.2l-1.2 1.2c-1.1 1.1-2.7 1.6-4.2 1.1-2.8-.9-5.6-3-8.2-5.6-2.6-2.6-4.7-5.4-5.6-8.2-.5-1.5 0-3.1 1.1-4.2z"></path>
+                  </svg>
+                </button>
+                <button class="report-icon-btn" id="askCareBotBtn" type="button" title="Ask Care Bot" aria-label="Ask Care Bot">
+                  <svg viewBox="0 0 24 24" class="report-icon-svg" aria-hidden="true">
+                    <path d="M6 6.5h12A2.5 2.5 0 0 1 20.5 9v6A2.5 2.5 0 0 1 18 17.5H11l-4.5 3V17.5H6A2.5 2.5 0 0 1 3.5 15V9A2.5 2.5 0 0 1 6 6.5z"></path>
+                    <path d="M12 9.2l.8 1.7 1.9.2-1.4 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.4-1.2 1.9-.2z" class="report-icon-cut"></path>
+                  </svg>
+                </button>
+                <div class="status-badge-lg" id="statusBadgeLg">Not recognized</div>
+              </div>
+            </div>
+
+            <div class="report-alert-strip" id="reportAlertStrip">
+              <div class="report-alert-title" id="reportUrgencyLabel">No action needed</div>
+              <div class="report-alert-text" id="reportTriageReasoning">The system will explain why this urgency level was chosen.</div>
+            </div>
+
+            <div class="vitals-row">
+              <div class="vital-card">
+                <span class="vital-label">Health</span>
+                <span class="vital-value" id="vitalScore">-</span>
+              </div>
+              <div class="vital-card">
+                <span class="vital-label">Help Type</span>
+                <span class="vital-value" id="vitalHelpType">-</span>
+              </div>
+              <div class="vital-card">
+                <span class="vital-label">Urgency</span>
+                <span class="vital-value" id="vitalUrgency">-</span>
+              </div>
+            </div>
+
+            <div class="report-section">
+              <h4 class="section-heading">Condition Summary</h4>
+              <p id="conditionSummary" class="report-text">-</p>
+            </div>
+
+            <div class="report-section" id="animalDescriptionSection">
+              <h4 class="section-heading">Animal Description</h4>
+              <p id="animalDescription" class="report-text">-</p>
+            </div>
+
+            <div class="report-section" id="injuryDescriptionSection">
+              <h4 class="section-heading">Injury Description</h4>
+              <p id="injuryDescription" class="report-text">-</p>
+            </div>
+
+            <div class="report-section">
+              <h4 class="section-heading">Body Condition</h4>
+              <p id="bodyCondition" class="report-text">-</p>
+            </div>
+
+            <div class="report-section" id="findingsSection">
+              <h4 class="section-heading">Visual Findings</h4>
+              <ul class="findings-list" id="findingsList"></ul>
+            </div>
+
+            <div class="report-section" id="symptomsSection">
+              <h4 class="section-heading">Visible Symptoms</h4>
+              <ul class="findings-list" id="visibleSymptomsList"></ul>
+            </div>
+
+            <div class="report-section">
+              <h4 class="section-heading">Clinical Notes</h4>
+              <p id="healthSummary" class="report-text">-</p>
+            </div>
+
+            <div class="report-section">
+              <h4 class="section-heading">Recommended Actions</h4>
+              <ol class="actions-list" id="actionsList"></ol>
+            </div>
+
+            <div class="report-section">
+              <h4 class="section-heading">What's Wrong</h4>
+              <p id="whatIsWrong" class="report-text">-</p>
+            </div>
+
+            <div class="report-section emergency-section" id="emergencySection">
+              <h4 class="section-heading">Emergency SOS</h4>
+              <p id="emergencySummary" class="report-text">-</p>
+              <div class="emergency-grid">
+                <div class="emergency-box">
+                  <h5>Do Now</h5>
+                  <ol class="actions-list" id="emergencySteps"></ol>
+                </div>
+                <div class="emergency-box">
+                  <h5>Avoid</h5>
+                  <ul class="findings-list" id="emergencyAvoid"></ul>
+                </div>
+              </div>
+              <p id="emergencyPriority" class="modal-meta-note">-</p>
+            </div>
+
+            <div class="location-strip report-location-strip" id="locationStrip">
+              <span class="loc-icon">LOC</span>
+              <span id="reportLocation">Location unavailable</span>
+            </div>
+
+            <div class="report-footer">
+              <div class="report-footer-actions">
+                <button class="report-footer-btn" type="button" data-report-action="download" title="Download report" aria-label="Download report">
+                  <svg viewBox="0 0 24 24" class="report-footer-svg" aria-hidden="true">
+                    <path d="M12 3v9m0 0 3.5-3.5M12 12l-3.5-3.5"></path>
+                    <path d="M5 14.5V19h14v-4.5"></path>
+                  </svg>
+                </button>
+                <button class="report-footer-btn" type="button" data-report-action="send" title="Send report" aria-label="Send report">
+                  <svg viewBox="0 0 24 24" class="report-footer-svg" aria-hidden="true">
+                    <path d="M4.5 12 19.5 4.5 15 19.5l-3.2-6.3L4.5 12z"></path>
+                    <path d="M11.8 13.2 19.5 4.5"></path>
+                  </svg>
+                </button>
+                <button class="report-footer-btn" type="button" data-report-action="print" title="Print report" aria-label="Print report">
+                  <svg viewBox="0 0 24 24" class="report-footer-svg" aria-hidden="true">
+                    <path d="M7 8V4h10v4"></path>
+                    <path d="M6 10h12a2 2 0 0 1 2 2v5h-3v3H7v-3H4v-5a2 2 0 0 1 2-2z"></path>
+                  </svg>
+                </button>
+              </div>
+              <span class="report-footer-date" id="reportDate">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-carebot">
+        <div class="carebot-layout">
+          <div class="chat-sidebar" id="carebotSidebar">
+            <div class="chat-sidebar-header">
+              <h3>Conversations</h3>
+              <div class="chat-sidebar-controls">
+                <button class="btn-new-chat" id="newChatBtn" type="button">+</button>
+              </div>
+            </div>
+            <div class="chat-thread-list" id="chatThreadList"></div>
+          </div>
+
+          <div class="chat-main">
+            <div class="chat-header">
+              <div class="chat-mobile-toggle">
+                <button class="chat-drawer-btn" id="chatDrawerBtn" type="button">☰</button>
+              </div>
+            <div class="chat-header-info">
+              <button class="sidebar-chevron-btn header-chevron-btn" id="toggleSidebarBtn" type="button"><</button>
+              <span class="chat-bot-avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="chat-bot-icon">
+                  <path d="M6 6.5h12A2.5 2.5 0 0 1 20.5 9v6A2.5 2.5 0 0 1 18 17.5H11l-4.5 3V17.5H6A2.5 2.5 0 0 1 3.5 15V9A2.5 2.5 0 0 1 6 6.5z"></path>
+                    <path d="M12 9.2l.8 1.7 1.9.2-1.4 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.4-1.2 1.9-.2z" class="chat-bot-icon-cut"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>Care Bot</h3>
+                <span class="chat-status-dot"></span>
+                <span class="chat-status-text">just one paw away</span>
+              </div>
+            </div>
+            <div class="chat-header-actions">
+              <button class="btn-ghost" id="renameChatBtn" type="button">Rename</button>
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chatMessages"></div>
+
+          <div class="chat-input-area">
+            <div class="chat-composer-shell">
+              <div class="quick-chips" id="quickChips">
+                <button class="chip" type="button" data-chip="My dog is bleeding. What should I do first?">Dog bleeding</button>
+                <button class="chip" type="button" data-chip="My cat is not eating and seems lethargic.">Cat lethargy</button>
+                <button class="chip" type="button" data-chip="A bird fell and cannot fly. What should I do?">Bird injury</button>
+                <button class="chip" type="button" data-chip="An animal may have eaten something toxic.">Possible poisoning</button>
+              </div>
+              <div class="edit-banner hidden" id="editBanner">
+                <span id="editBannerText">Editing message</span>
+                <button class="btn-ghost" id="cancelEditBtn" type="button">Cancel</button>
+              </div>
+              <div class="chat-input-row">
+                <textarea id="chatInput" class="chat-textarea" placeholder="Describe the animal's condition..." rows="1"></textarea>
+                <button class="btn-send" id="sendBtn" type="button">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-drawer-backdrop" id="chatDrawerBackdrop"></div>
+    </section>
+
+    <section class="page" id="page-dashboard">
+      <div class="page-header">
+        <h1 class="dashboard-title">
+          <span class="dashboard-title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="dashboard-title-svg">
+              <rect x="4" y="4" width="7" height="7" rx="1.5"></rect>
+              <rect x="13" y="4" width="7" height="7" rx="1.5"></rect>
+              <rect x="4" y="13" width="7" height="7" rx="1.5"></rect>
+              <rect x="13" y="13" width="7" height="7" rx="1.5"></rect>
+            </svg>
+          </span>
+          <span>Report Dashboard</span>
+        </h1>
+        <div class="dashboard-subheader">
+          <p>History of all scanned animal cases</p>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-num" id="statTotal">0</span>
+          <span class="stat-label">Total Cases</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num serious" id="statSerious">0</span>
+          <span class="stat-label">Serious</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num mild" id="statMild">0</span>
+          <span class="stat-label">Mild</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num healthy" id="statHealthy">0</span>
+          <span class="stat-label">Healthy</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="statUnknown">0</span>
+          <span class="stat-label">Unknown</span>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <button class="filter-reset-btn" id="clearFiltersBtn" type="button" title="Clear filters" aria-label="Clear filters">
+          <svg viewBox="0 0 24 24" class="filter-reset-svg">
+            <path d="M20 5v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M4 19v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M6.6 9A7 7 0 0 1 18 7.2L20 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M17.4 15A7 7 0 0 1 6 16.8L4 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+        <select id="filterAnimal">
+          <option value="">All Animals</option>
+          <option value="dog">Dog</option>
+          <option value="cat">Cat</option>
+          <option value="bird">Bird</option>
+          <option value="cow">Cow</option>
+          <option value="rabbit">Rabbit</option>
+        </select>
+        <select id="filterStatus">
+          <option value="">All Statuses</option>
+          <option value="Seriously Injured">Serious</option>
+          <option value="Mildly Injured">Mild</option>
+          <option value="Healthy">Healthy</option>
+          <option value="NotApplicable">Not Applicable</option>
+        </select>
+        <input type="date" id="filterDate">
+        <button class="btn-ghost danger" id="deleteAllBtn" type="button">Delete All</button>
+      </div>
+
+      <div class="dashboard-view-row">
+        <div class="dashboard-bulk-actions">
+          <button class="btn-secondary" id="selectAllReportsBtn" type="button">Select All</button>
+          <button class="btn-ghost danger" id="deleteSelectedBtn" type="button" disabled>Delete Selected</button>
+        </div>
+        <div class="dashboard-view-toggle" aria-label="Dashboard view toggle">
+          <button class="dashboard-view-btn active" id="dashboardCardsBtn" type="button" data-view="cards" title="Card view" aria-label="Card view">
+            <svg viewBox="0 0 24 24" class="dashboard-view-svg" aria-hidden="true">
+              <rect x="4" y="4" width="7" height="7" rx="1.5"></rect>
+              <rect x="13" y="4" width="7" height="7" rx="1.5"></rect>
+              <rect x="4" y="13" width="7" height="7" rx="1.5"></rect>
+              <rect x="13" y="13" width="7" height="7" rx="1.5"></rect>
+            </svg>
+          </button>
+          <button class="dashboard-view-btn" id="dashboardTableBtn" type="button" data-view="table" title="Table view" aria-label="Table view">
+            <svg viewBox="0 0 24 24" class="dashboard-view-svg" aria-hidden="true">
+              <rect x="4" y="5" width="16" height="3" rx="1.2"></rect>
+              <rect x="4" y="10.5" width="16" height="3" rx="1.2"></rect>
+              <rect x="4" y="16" width="16" height="3" rx="1.2"></rect>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="report-cards" id="reportCards">
+        <div class="empty-state">
+          <span>PAW</span>
+          <p>No reports yet. Scan an animal to get started.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-rescue">
+      <div class="page-header">
+        <h1>Rescue Contacts</h1>
+        <p>Nearby veterinary clinics and animal rescue services</p>
+      </div>
+
+      <div class="rescue-toolbar">
+        <div class="rescue-search-wrap">
+          <input id="rescueLocationInput" type="text" placeholder="Search location" autocomplete="off">
+          <div id="rescueSuggestions" class="rescue-suggestions hidden" aria-label="Location suggestions"></div>
+        </div>
+        <button class="btn-secondary" id="searchRescueBtn" type="button">Search</button>
+        <button class="btn-primary" id="rescueCurrentLocationBtn" type="button">Use Current Location</button>
+        <div id="rescueLoadingIndicator" class="rescue-loading-indicator hidden" aria-live="polite" aria-label="Loading contacts">
+          <div class="loader-ring rescue-loader-ring"></div>
+        </div>
+      </div>
+      <div class="rescue-layout">
+        <div class="rescue-col">
+          <h3 class="rescue-col-title">Rescue Services</h3>
+          <div id="rescueList" class="contact-list">
+            <p class="loading-msg">Loading contacts...</p>
+          </div>
+        </div>
+        <div class="rescue-col">
+          <h3 class="rescue-col-title">Veterinary Clinics</h3>
+          <div id="vetList" class="contact-list">
+            <p class="loading-msg">Loading contacts...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-overlay hidden" id="reportModal">
+    <div class="modal-box" id="reportModalBox">
+      <button class="modal-close" id="closeReportModalBtn" type="button">X</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

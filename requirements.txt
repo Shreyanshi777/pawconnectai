@@ -1,0 +1,13 @@
+fastapi==0.115.12
+uvicorn==0.34.0
+pydantic==2.11.2
+pydantic-settings==2.8.1
+python-multipart==0.0.20
+pillow==11.2.1
+numpy==2.1.1
+ultralytics==8.3.103
+torchvision>=0.16,<0.22
+tqdm==4.67.1
+pyyaml==6.0.2
+openai==1.75.0
+httpx==0.28.1

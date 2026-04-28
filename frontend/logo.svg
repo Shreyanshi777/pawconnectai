@@ -1,0 +1,18 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="14" x2="110" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4FFF8"/>
+      <stop offset="1" stop-color="#DDF7EC"/>
+    </linearGradient>
+    <linearGradient id="paw" x1="36" y1="24" x2="90" y2="92" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12967B"/>
+      <stop offset="1" stop-color="#0A5A49"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="18" y="14" width="92" height="92" rx="28" fill="url(#bg)"/>
+  <ellipse cx="44" cy="32" rx="9" ry="11" fill="url(#paw)" transform="rotate(-8 44 32)"/>
+  <ellipse cx="64" cy="24" rx="9" ry="11" fill="url(#paw)"/>
+  <ellipse cx="84" cy="32" rx="9" ry="11" fill="url(#paw)" transform="rotate(8 84 32)"/>
+  <path d="M64 47C47.6 47 35 59.8 35 75.2C35 86.1 42.1 94 51.5 94C57 94 60 90.8 64 90.8C68 90.8 71 94 76.5 94C85.9 94 93 86.1 93 75.2C93 59.8 80.4 47 64 47Z" fill="url(#paw)"/>
+</svg>
