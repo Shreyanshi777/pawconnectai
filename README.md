@@ -86,6 +86,8 @@ Required to run the project:
 - SQLite
 - A modern browser like Chrome or Edge
 - Internet access for first-time setup and external location/contact lookup
+- `GEOAPIFY_API_KEY` in `.env` for location detection and rescue contacts
+- `GOOGLE_MAPS_API_KEY` in `.env` if you want the stronger Google Places autocomplete/contact lookup path
 
 Python packages are listed in `requirements.txt`. Install them with:
 
@@ -98,6 +100,19 @@ Hardware note:
 - A laptop is the easiest setup.
 - On a Raspberry Pi, use a 64-bit OS with enough RAM and expect slower AI inference than on a laptop.
 - If the ML model files are missing, the app can still run with fallback behavior, but detection quality will be lower.
+
+### Minimum `.env` values
+
+```env
+GEOAPIFY_API_KEY=your_key_here
+DATABASE_PATH=database/animal_health.db
+```
+
+Optional but recommended for better rescue search:
+
+```env
+GOOGLE_MAPS_API_KEY=your_google_places_key_here
+```
 
 ## Technology Stack
 
