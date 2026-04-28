@@ -114,6 +114,51 @@ Optional but recommended for better rescue search:
 GOOGLE_MAPS_API_KEY=your_google_places_key_here
 ```
 
+## Run Steps
+
+### 1. Install dependencies
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### 2. Set up `.env`
+
+Create a `.env` file in the project root:
+
+```env
+DATABASE_PATH=database/animal_health.db
+GEOAPIFY_API_KEY=your_free_geoapify_key_here
+```
+
+Optional for better rescue autocomplete and contact lookup:
+
+```env
+GOOGLE_MAPS_API_KEY=your_google_places_key_here
+```
+
+### 3. Start the backend
+
+```powershell
+python -m uvicorn backend.app.main:app --reload
+```
+
+### 4. Open the app
+
+Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+### 5. Check SQLite data
+
+You can inspect the database with:
+
+```powershell
+python -c "import sqlite3; conn = sqlite3.connect('database/animal_health.db'); cur = conn.cursor(); cur.execute('SELECT report_id, animal_name, animal_type, health_status, created_at FROM reports ORDER BY created_at DESC LIMIT 10'); print(cur.fetchall())"
+```
+
 ## Technology Stack
 
 - Frontend: HTML, CSS, JavaScript
