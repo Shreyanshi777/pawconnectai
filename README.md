@@ -87,6 +87,7 @@ Required to run the project:
 - A modern browser like Chrome or Edge
 - Internet access for first-time setup and external location/contact lookup
 - `GEOAPIFY_API_KEY` in `.env` for location detection and rescue contacts
+- `MAPPLS_ACCESS_TOKEN` in `.env` for the improved Dahisar/Borivali autocomplete and contact lookup path
 - `GOOGLE_MAPS_API_KEY` in `.env` if you want the stronger Google Places autocomplete/contact lookup path
 
 Python packages are listed in `requirements.txt`. Install them with:
@@ -105,6 +106,7 @@ Hardware note:
 
 ```env
 GEOAPIFY_API_KEY=your_key_here
+MAPPLS_ACCESS_TOKEN=your_mappls_token_here
 DATABASE_PATH=database/animal_health.db
 ```
 
@@ -129,6 +131,7 @@ Create a `.env` file in the project root:
 ```env
 DATABASE_PATH=database/animal_health.db
 GEOAPIFY_API_KEY=your_free_geoapify_key_here
+MAPPLS_ACCESS_TOKEN=your_mappls_token_here
 ```
 
 Optional for better rescue autocomplete and contact lookup:
