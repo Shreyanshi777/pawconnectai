@@ -29,6 +29,30 @@ const state = {
   rescueAutocompleteItems: [],
 };
 
+const RESCUE_QUICK_SUGGESTIONS = [
+  { label: "St. Francis Institute of Technology", address: "Mount Poinsur, Dahisar West, Mumbai" },
+  { label: "Mount Poinsur", address: "Dahisar West, Mumbai" },
+  { label: "Santoshi Mata Road", address: "Dahisar West, Mumbai" },
+  { label: "Mandapeshwar", address: "Dahisar West, Mumbai" },
+  { label: "Dahisar Station", address: "Dahisar West, Mumbai" },
+  { label: "Dahisar West", address: "Mumbai" },
+  { label: "Dahisar East", address: "Mumbai" },
+  { label: "Rawalpada", address: "Dahisar East, Mumbai" },
+  { label: "Nancy Colony", address: "Dahisar East, Mumbai" },
+  { label: "IC Colony", address: "Borivali West, Mumbai" },
+  { label: "Eksar", address: "Borivali West, Mumbai" },
+  { label: "Gorai", address: "Borivali West, Mumbai" },
+  { label: "Shimpoli", address: "Borivali West, Mumbai" },
+  { label: "Saibaba Nagar", address: "Borivali West, Mumbai" },
+  { label: "Chikuwadi", address: "Borivali West, Mumbai" },
+  { label: "Vazira Naka", address: "Borivali West, Mumbai" },
+  { label: "Borivali Station", address: "Borivali West, Mumbai" },
+  { label: "Borivali West", address: "Mumbai" },
+  { label: "Borivali East", address: "Mumbai" },
+  { label: "New Link Road", address: "Borivali West, Mumbai" },
+  { label: "S.V. Road", address: "Borivali West, Mumbai" },
+];
+
 document.addEventListener("DOMContentLoaded", () => {
   loadPublicConfig();
   bindNavigation();
@@ -1702,18 +1726,16 @@ function bindRescue() {
     suggestions.addEventListener("click", (event) => {
       const button = event.target.closest("[data-rescue-suggestion]");
       if (!button) return;
-      const index = Number(button.getAttribute("data-rescue-index"));
-      const selectedItem = Number.isInteger(index) && index >= 0 ? state.rescueAutocompleteItems[index] : null;
-      const label = selectedItem?.label || button.getAttribute("data-rescue-suggestion") || "";
+      const label = button.getAttribute("data-rescue-label") || button.getAttribute("data-rescue-suggestion") || "";
       const lat = button.getAttribute("data-rescue-lat");
       const lng = button.getAttribute("data-rescue-lng");
-      const address = selectedItem?.address || button.getAttribute("data-rescue-address") || "";
+      const address = button.getAttribute("data-rescue-address") || "";
       const inputEl = document.getElementById("rescueLocationInput");
       if (inputEl) inputEl.value = label;
       hideRescueSuggestions();
       loadRescueContacts(lat != null && lng != null
-        ? { location: [address, label].filter(Boolean).join(" - ") || label, lat: Number(lat), lng: Number(lng) }
-        : { location: [address, label].filter(Boolean).join(" - ") || label });
+        ? { location: label || address, lat: Number(lat), lng: Number(lng) }
+        : { location: label || address });
     });
   }
   document.addEventListener("click", (event) => {
@@ -1731,7 +1753,105 @@ function handleRescueLocationTyping(value) {
     hideRescueSuggestions();
     return;
   }
-  state.rescueSuggestionsTimer = window.setTimeout(() => fetchRescueSuggestions(query), 220);
+  renderLocalRescueSuggestions(query);
+  state.rescueSuggestionsTimer = window.setTimeout(() => fetchRescueSuggestions(query), 70);
+}
+
+function normalizeSuggestionText(value) {
+  return String(value || "").toLocaleLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isCommonSequenceMatch(query, candidate) {
+  const q = normalizeSuggestionText(query).replace(/\s+/g, "");
+  const c = normalizeSuggestionText(candidate).replace(/\s+/g, "");
+  if (!q || !c) return false;
+  let index = 0;
+  for (const ch of q) {
+    index = c.indexOf(ch, index);
+    if (index === -1) return false;
+    index += 1;
+  }
+  return true;
+}
+
+function scoreRescueSuggestion(query, item) {
+  const q = normalizeSuggestionText(query);
+  const label = normalizeSuggestionText(item.label || "");
+  const address = normalizeSuggestionText(item.address || "");
+  const labelCompact = label.replace(/\s+/g, "");
+  const addressCompact = address.replace(/\s+/g, "");
+  const qCompact = q.replace(/\s+/g, "");
+  let score = 0;
+  if (!q) return score;
+  const tokens = q.split(" ").filter(Boolean);
+  const firstToken = tokens[0] || "";
+  const areaHints = ["borivali", "dahisar", "ic colony", "eksar", "gorai", "st francis", "mount poinsur", "mandapeshwar", "rawalpada", "nancy colony", "shimpoli", "saibaba nagar", "chikuwadi"];
+  if (label === q || address === q) score += 300;
+  if (label.startsWith(q) || address.startsWith(q)) score += 220;
+  if (labelCompact.startsWith(qCompact) || addressCompact.startsWith(qCompact)) score += 200;
+  if (label.includes(q) || address.includes(q)) score += 140;
+  if (labelCompact.includes(qCompact) || addressCompact.includes(qCompact)) score += 120;
+  if (tokens.length && tokens.every((part) => label.includes(part) || address.includes(part))) score += 110;
+  if (firstToken && (label.startsWith(firstToken) || address.startsWith(firstToken))) score += 80;
+  if (isCommonSequenceMatch(q, label)) score += 70;
+  if (isCommonSequenceMatch(q, address)) score += 60;
+  if (tokens.length >= 2 && tokens.some((part) => part.length >= 3) && tokens.every((part) => isCommonSequenceMatch(part, label) || isCommonSequenceMatch(part, address) || label.includes(part) || address.includes(part))) score += 70;
+  if (areaHints.some((hint) => q.includes(hint))) {
+    if (areaHints.some((hint) => label.includes(hint) || address.includes(hint))) score += 150;
+  }
+  if (qCompact.length >= 3 && (labelCompact.includes(qCompact) || addressCompact.includes(qCompact))) score += 40;
+  return score;
+}
+
+function renderRescueSuggestionItems(items, loadingMessage = "") {
+  const suggestions = document.getElementById("rescueSuggestions");
+  if (!suggestions) return;
+  if (!items.length) {
+    suggestions.innerHTML = loadingMessage
+      ? `<div class="rescue-suggestion-loading">${esc(loadingMessage)}</div>`
+      : "";
+    suggestions.classList.toggle("hidden", !loadingMessage);
+    return;
+  }
+  suggestions.innerHTML = items.map((item, index) => {
+    const mainText = item.main_text || item.label || "";
+    const secondaryText = item.secondary_text || item.address || "";
+    return `
+      <button type="button" class="rescue-suggestion-btn"
+        data-rescue-suggestion="${esc(item.label || "")}"
+        data-rescue-lat="${item.lat ?? ""}"
+        data-rescue-lng="${item.lon ?? ""}"
+        data-rescue-address="${esc(item.address || "")}"
+        data-rescue-label="${esc(item.label || "")}">
+        <span class="rescue-suggestion-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="rescue-suggestion-pin-svg">
+            <path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11z"></path>
+            <circle cx="12" cy="10" r="2.2"></circle>
+          </svg>
+        </span>
+        <span class="rescue-suggestion-copy">
+          <span class="rescue-suggestion-title">${esc(mainText)}</span>
+          ${secondaryText ? `<span class="rescue-suggestion-address">${esc(secondaryText)}</span>` : ""}
+        </span>
+      </button>
+    `;
+  }).join("");
+  suggestions.classList.remove("hidden");
+}
+
+function renderLocalRescueSuggestions(query) {
+  const ranked = RESCUE_QUICK_SUGGESTIONS
+    .map((item) => ({ ...item, score: scoreRescueSuggestion(query, item) }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 8);
+  const matches = ranked
+    .filter((item) => item.score > 0)
+    .map(({ score, ...item }) => item);
+  if (matches.length) {
+    renderRescueSuggestionItems(matches, "Searching more matches...");
+    return;
+  }
+  renderRescueSuggestionItems(ranked.map(({ score, ...item }) => item), "Searching locations...");
 }
 
 async function fetchRescueSuggestions(query) {
@@ -1748,40 +1868,30 @@ async function fetchRescueSuggestions(query) {
     if (!res.ok) throw new Error(`Status ${res.status}`);
     const data = await res.json();
     const items = Array.isArray(data?.suggestions) ? data.suggestions : [];
-    state.rescueAutocompleteItems = items;
-    if (!items.length) {
-      suggestions.innerHTML = "";
-      suggestions.classList.add("hidden");
+    const merged = [...state.rescueAutocompleteItems, ...items];
+    const deduped = [];
+    const seen = new Set();
+    for (const item of merged) {
+      const key = `${normalizeSuggestionText(item.label)}|${normalizeSuggestionText(item.address)}|${item.lat ?? ""}|${item.lon ?? ""}`;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(item);
+    }
+    state.rescueAutocompleteItems = deduped;
+    if (!deduped.length) {
+      renderRescueSuggestionItems([], "No matching locations yet...");
       return;
     }
-    suggestions.innerHTML = items.map((item, index) => {
-      const mainText = item.main_text || item.label || "";
-      const secondaryText = item.secondary_text || item.address || "";
-      return `
-      <button type="button" class="rescue-suggestion-btn"
-        data-rescue-index="${index}"
-        data-rescue-suggestion="${esc(item.label || "")}"
-        data-rescue-lat="${item.lat ?? ""}"
-        data-rescue-lng="${item.lon ?? ""}"
-        data-rescue-address="${esc(item.address || "")}">
-        <span class="rescue-suggestion-pin" aria-hidden="true">
-          <svg viewBox="0 0 24 24" class="rescue-suggestion-pin-svg">
-            <path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11z"></path>
-            <circle cx="12" cy="10" r="2.2"></circle>
-          </svg>
-        </span>
-        <span class="rescue-suggestion-copy">
-          <span class="rescue-suggestion-title">${esc(mainText)}</span>
-          ${secondaryText ? `<span class="rescue-suggestion-address">${esc(secondaryText)}</span>` : ""}
-        </span>
-      </button>
-    `}).join("");
-    suggestions.classList.remove("hidden");
+    const ranked = deduped
+      .map((item) => ({ ...item, score: scoreRescueSuggestion(query, item) }))
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 8);
+    const visible = ranked.filter((item) => item.score > 0).map(({ score, ...item }) => item);
+    renderRescueSuggestionItems(visible.length ? visible : ranked.map(({ score, ...item }) => item));
   } catch (error) {
     if (error?.name === "AbortError") return;
     state.rescueAutocompleteItems = [];
-    suggestions.innerHTML = "";
-    suggestions.classList.add("hidden");
+    renderLocalRescueSuggestions(query);
   } finally {
     setRescueLoading(false);
   }
@@ -1808,7 +1918,7 @@ function buildRescueSearchQuery(rawValue) {
     || state.rescueAutocompleteItems.find((item) => String(item.address || "").toLowerCase().includes(normalizedLocation));
   if (exactMatch && exactMatch.lat != null && exactMatch.lon != null) {
     return {
-      location: [exactMatch.address, exactMatch.label].filter(Boolean).join(" - ") || exactMatch.label || location,
+      location: exactMatch.label || exactMatch.address || location,
       lat: Number(exactMatch.lat),
       lng: Number(exactMatch.lon)
     };
@@ -1823,30 +1933,7 @@ async function resolveRescueLocationQuery(rawValue) {
   if (cached.lat != null && cached.lng != null) {
     return cached;
   }
-
-  try {
-    const res = await fetch(`${API}/api/locations/autocomplete?q=${encodeURIComponent(location)}`, { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      const items = Array.isArray(data?.suggestions) ? data.suggestions : [];
-      state.rescueAutocompleteItems = items;
-      const normalizedLocation = normalizeSearchText(location);
-      const exactMatch = items.find((item) => String(item.label || "").toLowerCase() === normalizedLocation)
-        || items.find((item) => String(item.address || "").toLowerCase() === normalizedLocation)
-        || items.find((item) => String(item.label || "").toLowerCase().includes(normalizedLocation))
-        || items.find((item) => String(item.address || "").toLowerCase().includes(normalizedLocation));
-      if (exactMatch && exactMatch.lat != null && exactMatch.lon != null) {
-        return {
-          location: [exactMatch.address, exactMatch.label].filter(Boolean).join(" - ") || exactMatch.label || location,
-          lat: Number(exactMatch.lat),
-          lng: Number(exactMatch.lon),
-        };
-      }
-    }
-  } catch (error) {
-    console.warn("Could not resolve typed rescue location.", error);
-  }
-  return cached;
+  return { location };
 }
 
 async function submitRescueLocationSearch(rawValue) {
@@ -1855,8 +1942,7 @@ async function submitRescueLocationSearch(rawValue) {
     await loadRescueContacts({ location: "" });
     return;
   }
-  const resolved = await resolveRescueLocationQuery(query);
-  await loadRescueContacts(resolved);
+  await loadRescueContacts({ location: query });
 }
 
 async function loadRescueContacts(options = null) {
@@ -1885,7 +1971,7 @@ async function loadRescueContacts(options = null) {
       renderRescueStatus(data.location_status, data.location_message);
       if (data.searched_location && (data.searched_location.name || data.searched_location.address || data.searched_location.lat != null || data.searched_location.lng != null)) {
         state.rescueContext = {
-          location: [data.searched_location.address, data.searched_location.name].filter(Boolean).join(" - ") || query.location || "",
+          location: data.searched_location.name || data.searched_location.address || query.location || "",
           lat: data.searched_location.lat != null ? Number(data.searched_location.lat) : undefined,
           lng: data.searched_location.lng != null ? Number(data.searched_location.lng) : undefined,
         };
@@ -2008,7 +2094,6 @@ function renderRescueCard(contact) {
       ${contact.phone ? `<p class="contact-phone"><a href="tel:${esc(contact.phone)}">${esc(contact.phone)}</a></p>` : ""}
       <div class="contact-meta-row">
         ${navLink ? `<button class="contact-map-link" type="button" data-contact-nav="${esc(navLink)}">Map</button>` : `<span></span>`}
-        ${renderDistanceBadge(contact.distance_km)}
       </div>
     </div>
   `;
@@ -2023,18 +2108,18 @@ function renderVetCard(contact) {
       ${contact.phone ? `<p class="contact-phone"><a href="tel:${esc(contact.phone)}">${esc(contact.phone)}</a></p>` : ""}
       <div class="contact-meta-row">
         ${navLink ? `<button class="contact-map-link" type="button" data-contact-nav="${esc(navLink)}">Map</button>` : `<span></span>`}
-        ${renderDistanceBadge(contact.distance_km)}
       </div>
     </div>
   `;
 }
 
 function pickNearbyContacts(contacts) {
-  const nearby = contacts.filter((contact) => typeof contact.distance_km === "number" && contact.distance_km <= 6);
+  const sorted = sortContactsByDistance(contacts);
+  const nearby = sorted.filter((contact) => typeof contact.distance_km === "number" && contact.distance_km <= 5);
   if (nearby.length) {
     return { contacts: nearby, isFarFallback: false };
   }
-  return { contacts, isFarFallback: contacts.length > 0 };
+  return { contacts: sorted, isFarFallback: sorted.length > 0 };
 }
 
 function sortContactsByDistance(contacts) {
@@ -2043,12 +2128,6 @@ function sortContactsByDistance(contacts) {
     const rightDistance = typeof right.distance_km === "number" ? right.distance_km : Number.POSITIVE_INFINITY;
     return leftDistance - rightDistance;
   });
-}
-
-function renderDistanceBadge(distanceKm) {
-  if (typeof distanceKm !== "number" || Number.isNaN(distanceKm)) return "";
-  const rounded = distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m away` : `${distanceKm.toFixed(1)} km away`;
-  return `<span class="contact-distance">${esc(rounded)}</span>`;
 }
 
 function buildContactMapLink(contact) {

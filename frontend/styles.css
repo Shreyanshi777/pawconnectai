@@ -1857,6 +1857,15 @@ h1, h2, h3, h4, p { margin: 0; }
   flex: 0 0 auto;
   white-space: nowrap;
 }
+.rescue-suggestion-loading {
+  padding: 12px 14px;
+  color: var(--text-3);
+  font-size: 13px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+}
 .rescue-fallback-card {
   border-style: dashed;
 }
