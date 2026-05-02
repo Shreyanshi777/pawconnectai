@@ -9,7 +9,7 @@ from backend.app.schemas.chat import MedicalChatRequest, MedicalChatResponse
 from backend.app.db.session import get_db
 from backend.app.schemas.report import DetectionBox, NearbyContactsResponse, PredictionResponse, ReportCreate, ReportOut, ReportUpdate, SearchedLocationOut
 from backend.app.services.ai_pipeline import SUPPORTED_DOMESTIC_ANIMALS, pipeline
-from backend.app.services.contact_service import autocomplete_locations, get_contacts_for_area, preview_location_resolution
+from backend.app.services.contact_service import LocationContext, autocomplete_locations, get_contacts_for_area, preview_location_resolution
 from backend.app.services.crud import create_report, delete_all_reports, delete_report, get_report, get_reports, update_report
 from backend.app.services.geo_service import reverse_geocode
 from backend.app.services.guidance import guidance_for_status, health_summary_for_status
@@ -146,7 +146,15 @@ def nearby_contacts(
 ):
     client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else None)
     location_preview = preview_location_resolution(location, lat, lng, client_ip=client_ip)
-    rescue_contacts, vet_contacts = get_contacts_for_area(None, location, lat, lng, client_ip=client_ip)
+    resolved_origin = None
+    if location_preview.get("lat") is not None and location_preview.get("lon") is not None:
+        resolved_origin = LocationContext(
+            label=str(location_preview.get("label") or location or "Current location"),
+            lat=float(location_preview["lat"]),
+            lon=float(location_preview["lon"]),
+            source=str(location_preview.get("status") or "query"),
+        )
+    rescue_contacts, vet_contacts = get_contacts_for_area(None, location, lat, lng, client_ip=client_ip, resolved_origin=resolved_origin)
     resolved_name = location_preview.get("label") or location or ("Current location" if lat is not None and lng is not None else None)
     if rescue_contacts or vet_contacts:
         location_status = location_preview.get("status") or "unknown"
@@ -220,7 +228,15 @@ def predict_animal_health(
         effective_lat = location_info.get("location_lat", effective_lat)
         effective_long = location_info.get("location_long", effective_long)
     inferred_area = area or location_info["location_name"]
-    rescue_contacts, vet_contacts = get_contacts_for_area(db, inferred_area, effective_lat, effective_long)
+    resolved_origin = None
+    if effective_lat is not None and effective_long is not None:
+        resolved_origin = LocationContext(
+            label=str(location_info.get("location_name") or inferred_area or "Current location"),
+            lat=float(effective_lat),
+            lon=float(effective_long),
+            source="report",
+        )
+    rescue_contacts, vet_contacts = get_contacts_for_area(db, inferred_area, effective_lat, effective_long, resolved_origin=resolved_origin)
 
     base_case_report = build_case_report(
         animal_type=prediction["animal_type"],

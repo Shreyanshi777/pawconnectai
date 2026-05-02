@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     geoapify_ip_geolocation_url: str = "https://api.geoapify.com/v1/ipinfo"
     geoapify_search_radius_meters: int = 15000
     geoapify_country_code: str = "in"
+    mappls_access_token: str | None = None
     google_maps_api_key: str | None = None
     upi_vpa: str | None = None
     upi_payee_name: str = "Paw Connect"

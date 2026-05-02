@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from difflib import SequenceMatcher
 from math import atan2, cos, radians, sin, sqrt
@@ -17,12 +18,14 @@ from backend.app.core.config import settings
 
 VET_CATEGORIES = "pet.veterinary,healthcare,pet,service"
 RESCUE_CATEGORIES = "pet.service,pet,service,emergency"
-DEFAULT_RESULT_LIMIT = 12
+DEFAULT_RESULT_LIMIT = 20
 NEARBY_CONTACT_RADIUS_METERS = 8000
 FAR_CONTACT_RADIUS_METERS = max(25000, int(settings.geoapify_search_radius_meters))
+MAPPLS_NEARBY_CONTACT_RADIUS_METERS = 5000
+MAPPLS_FAR_CONTACT_RADIUS_METERS = 15000
 OVERPASS_NEARBY_RADIUS_METERS = 30000
 OVERPASS_FAR_RADIUS_METERS = 60000
-CONTACT_CACHE_TTL_SECONDS = 0
+CONTACT_CACHE_TTL_SECONDS = 180
 AUTOCOMPLETE_CACHE_TTL_SECONDS = 600
 _CONTACT_CACHE: dict[tuple[Any, ...], tuple[float, tuple[list[dict[str, Any]], list[dict[str, Any]]]]] = {}
 _AUTOCOMPLETE_CACHE: dict[tuple[Any, ...], tuple[float, list[dict[str, Any]]]] = {}
@@ -36,133 +39,51 @@ SUPPORTED_CITY_ALIASES = {
 }
 SUPPORTED_LOCATION_GROUPS = [
     {
-        "label": "Mumbai",
-        "city": "Mumbai",
-        "lat": 19.0760,
-        "lon": 72.8777,
-        "aliases": ["mumbai", "bombay"],
-    },
-    {
-        "label": "Thane",
-        "city": "Thane",
-        "lat": 19.2183,
-        "lon": 72.9781,
-        "aliases": ["thane", "thana"],
-    },
-    {
         "label": "Borivali",
         "city": "Mumbai",
         "lat": 19.2290,
         "lon": 72.8560,
-        "aliases": ["borivali", "borivli", "borivalli", "borivali west", "borivali east"],
+        "aliases": [
+            "borivali",
+            "borivli",
+            "borivalli",
+            "borivali west",
+            "borivali east",
+            "borivali station",
+            "borivali railway station",
+            "borivali west link road",
+            "s v road borivali",
+            "ic colony",
+            "eksar",
+            "gorai",
+            "yogi nagar",
+            "m g road borivali",
+        ],
     },
     {
         "label": "Dahisar",
         "city": "Mumbai",
         "lat": 19.2570,
         "lon": 72.8590,
-        "aliases": ["dahisar", "dahisar east", "dahisar west"],
-    },
-    {
-        "label": "Kandivali",
-        "city": "Mumbai",
-        "lat": 19.2060,
-        "lon": 72.8420,
-        "aliases": ["kandivali", "kandvali", "kandivali east", "kandivali west"],
-    },
-    {
-        "label": "Malad",
-        "city": "Mumbai",
-        "lat": 19.1860,
-        "lon": 72.8480,
-        "aliases": ["malad", "malad east", "malad west", "malad east mumbai", "malad west mumbai"],
-    },
-    {
-        "label": "Goregaon",
-        "city": "Mumbai",
-        "lat": 19.1550,
-        "lon": 72.8490,
-        "aliases": ["goregaon", "goregan", "goregaon east", "goregaon west"],
-    },
-    {
-        "label": "Jogeshwari",
-        "city": "Mumbai",
-        "lat": 19.1360,
-        "lon": 72.8460,
-        "aliases": ["jogeshwari", "jogeshwary", "jogeshwari east", "jogeshwari west"],
-    },
-    {
-        "label": "Andheri",
-        "city": "Mumbai",
-        "lat": 19.1197,
-        "lon": 72.8468,
-        "aliases": ["andheri", "andheri east", "andheri west"],
-    },
-    {
-        "label": "Vile Parle",
-        "city": "Mumbai",
-        "lat": 19.1030,
-        "lon": 72.8510,
-        "aliases": ["vile parle", "vileparle", "vile parle east", "vile parle west"],
-    },
-    {
-        "label": "Santacruz",
-        "city": "Mumbai",
-        "lat": 19.0896,
-        "lon": 72.8656,
-        "aliases": ["santacruz", "santa cruz", "santacruz east", "santacruz west"],
-    },
-    {
-        "label": "Bandra",
-        "city": "Mumbai",
-        "lat": 19.0544,
-        "lon": 72.8408,
-        "aliases": ["bandra", "bandra east", "bandra west"],
-    },
-    {
-        "label": "Sion",
-        "city": "Mumbai",
-        "lat": 19.0430,
-        "lon": 72.8610,
-        "aliases": ["sion", "sion east", "sion west"],
-    },
-    {
-        "label": "Kurla",
-        "city": "Mumbai",
-        "lat": 19.0728,
-        "lon": 72.8826,
-        "aliases": ["kurla", "kurla east", "kurla west"],
-    },
-    {
-        "label": "Mira Road",
-        "city": "Thane",
-        "lat": 19.2800,
-        "lon": 72.8750,
-        "aliases": ["mira road", "mira bhayandar", "bhayandar", "mira-bhayandar"],
-    },
-    {
-        "label": "Bhiwandi",
-        "city": "Thane",
-        "lat": 19.3000,
-        "lon": 73.0660,
-        "aliases": ["bhiwandi", "bhiwndi", "bhivandi"],
-    },
-    {
-        "label": "Kalyan",
-        "city": "Thane",
-        "lat": 19.2437,
-        "lon": 73.1305,
-        "aliases": ["kalyan", "kalyan west", "kalyan east"],
-    },
-    {
-        "label": "Dombivli",
-        "city": "Thane",
-        "lat": 19.2183,
-        "lon": 73.0860,
-        "aliases": ["dombivli", "dombivali", "dombivli east", "dombivli west"],
+        "aliases": [
+            "dahisar",
+            "dahisar east",
+            "dahisar west",
+            "dahisar station",
+            "mandapeshwar",
+            "ketkipada",
+            "shailendra nagar",
+            "mhatre wadi",
+            "mira bhayandar road",
+            "st francis institute of technology",
+            "francis institute of technology",
+            "mount poinsur",
+            "santoshi mata road",
+            "st francis dahisar",
+        ],
     },
 ]
-SUPPORTED_REGION_RADIUS_KM = 80.0
+SUPPORTED_REGION_RADIUS_KM = 7.0
 LOCALITY_VARIANT_SUGGESTIONS = {
     "borivali": [
         "Borivali East",
@@ -176,6 +97,16 @@ LOCALITY_VARIANT_SUGGESTIONS = {
         "Gorai",
         "Yogi Nagar",
         "M.G. Road, Borivali East",
+        "Chikuwadi",
+        "Saibaba Nagar",
+        "Devki Nagar",
+        "Vazira Naka",
+        "Shimpoli",
+        "Prem Nagar",
+        "Kora Kendra",
+        "New Link Road, Borivali",
+        "Borivali National Park",
+        "Mahavir Nagar, Borivali",
     ],
     "dahisar": [
         "Dahisar East",
@@ -192,39 +123,15 @@ LOCALITY_VARIANT_SUGGESTIONS = {
         "Mount Poinsur",
         "Santoshi Mata Road",
         "St Francis Dahisar",
+        "Anand Nagar",
+        "Nancy Colony",
+        "Rawalpada",
+        "Ashok Van",
+        "Ketkipada East",
+        "Dahisar Toll Naka",
+        "LC Road, Dahisar",
+        "SV Road, Dahisar",
     ],
-    "kandivali": [
-        "Kandivali East",
-        "Kandivali West",
-        "Kandivali Station",
-        "Poisar",
-        "Charkop",
-        "Mahavir Nagar",
-        "Thakur Village",
-    ],
-    "malad": [
-        "Malad East",
-        "Malad West",
-        "Malad Station",
-        "Orlem",
-        "Mindspace",
-        "Marve",
-        "Aksa",
-        "Link Road, Malad West",
-        "Lower Malad",
-    ],
-    "goregaon": ["Goregaon East", "Goregaon West", "Goregaon Station", "Aarey Colony", "Film City", "Oshiwara"],
-    "jogeshwari": ["Jogeshwari East", "Jogeshwari West", "Jogeshwari Station", "Oshiwara", "JVLR"],
-    "andheri": ["Andheri East", "Andheri West", "Andheri Station", "Marol", "Lokhandwala", "MIDC"],
-    "vile parle": ["Vile Parle East", "Vile Parle West", "Vile Parle Station", "Santacruz side"],
-    "santacruz": ["Santacruz East", "Santacruz West", "Santacruz Station", "Vakola", "Kalina"],
-    "bandra": ["Bandra East", "Bandra West", "Bandra Station", "Khar Road", "Pali Hill"],
-    "sion": ["Sion East", "Sion West", "Sion Station", "Chunabhatti", "Dharavi"],
-    "kurla": ["Kurla East", "Kurla West", "Kurla Station", "Nehru Nagar", "Vidyavihar side"],
-    "mira road": ["Mira Road East", "Mira Road West", "Mira Road Station", "Bhayandar side"],
-    "bhiwandi": ["Bhiwandi West", "Bhiwandi East", "Bhiwandi Station", "Kalyan Road", "Narpoli"],
-    "kalyan": ["Kalyan West", "Kalyan East", "Kalyan Station", "Dombivli side", "Shahad"],
-    "dombivli": ["Dombivli East", "Dombivli West", "Dombivli Station", "Kalyan side", "Shilphata"],
 }
 
 VET_CONTACT_KEYWORDS = (
@@ -244,6 +151,15 @@ RESCUE_CONTACT_KEYWORDS = (
     "animal aid",
     "animal welfare",
     "pet rescue",
+    "animal rescue",
+    "animal shelter",
+    "animal help",
+    "street animal",
+    "animal welfare trust",
+    "animal welfare society",
+    "foundation",
+    "trust",
+    "society",
 )
 VET_CONTACT_CATEGORY_GROUPS = [
     "pet.veterinary",
@@ -301,7 +217,8 @@ def _client() -> httpx.Client:
     if httpx is None:  # pragma: no cover - defensive guard
         raise RuntimeError("httpx is not available.")
     return httpx.Client(
-        timeout=12.0,
+        timeout=3.0,
+        trust_env=False,
         headers={
             "Accept-Language": "en",
             "User-Agent": settings.app_user_agent,
@@ -319,6 +236,15 @@ def _api_key() -> str:
 def _google_api_key() -> str | None:
     key = (settings.google_maps_api_key or "").strip()
     return key or None
+
+
+def _mappls_access_token() -> str | None:
+    key = (settings.mappls_access_token or "").strip()
+    return key or None
+
+
+def _has_mappls() -> bool:
+    return bool(_mappls_access_token())
 
 
 def _has_google_places() -> bool:
@@ -342,6 +268,26 @@ def _google_place_details_url() -> str:
 
 def _google_nearby_url() -> str:
     return "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+
+
+def _mappls_autosuggest_url() -> str:
+    return "https://search.mappls.com/search/places/autosuggest/json"
+
+
+def _mappls_textsearch_url() -> str:
+    return "https://search.mappls.com/search/places/textsearch/json"
+
+
+def _mappls_geocode_url() -> str:
+    return "https://search.mappls.com/search/address/geocode"
+
+
+def _mappls_reverse_geocode_url() -> str:
+    return "https://search.mappls.com/search/address/rev-geocode"
+
+
+def _mappls_nearby_url() -> str:
+    return "https://search.mappls.com/search/places/nearby/json"
 
 
 def _google_pick_prediction(query: str, predictions: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -463,17 +409,33 @@ def _google_contact_search(client: httpx.Client, origin: LocationContext, kind: 
         return []
     keywords = {
         "vet": ["veterinary", "vet", "animal hospital"],
-        "rescue": ["animal rescue", "rescue", "shelter", "animal shelter", "animal welfare"],
+        "rescue": [
+            "animal rescue",
+            "rescue",
+            "shelter",
+            "animal shelter",
+            "animal welfare",
+            "animal aid",
+            "animal help",
+            "animal welfare trust",
+            "animal welfare society",
+            "street animal",
+            "ngo",
+            "foundation",
+            "trust",
+            "society",
+        ],
     }.get(kind, ["vet"])
     results: list[dict[str, Any]] = []
     seen: set[str] = set()
     for keyword in keywords:
+        radius_meters = 5000 if kind == "vet" else 15000
         payload = _google_request_json(
             client,
             _google_nearby_url(),
             {
                 "location": f"{origin.lat},{origin.lon}",
-                "radius": 5000,
+                "radius": radius_meters,
                 "keyword": keyword,
                 "language": "en",
                 "key": key,
@@ -529,6 +491,336 @@ def _google_contact_search(client: httpx.Client, origin: LocationContext, kind: 
                 return results
     results.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
     return results[:DEFAULT_RESULT_LIMIT]
+
+
+def _mappls_request_json(client: httpx.Client, url: str, params: dict[str, Any]) -> dict[str, Any]:
+    token = _mappls_access_token()
+    if not token:
+        return {}
+    request_params = dict(params)
+    request_params["access_token"] = token
+    response = client.get(url, params=request_params)
+    response.raise_for_status()
+    payload = response.json()
+    return payload if isinstance(payload, dict) else {}
+
+
+def _mappls_items(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    for key in ("suggestedLocations", "userAddedLocations", "results", "places"):
+        items = payload.get(key)
+        if isinstance(items, list):
+            return [item for item in items if isinstance(item, dict)]
+    return []
+
+
+def _mappls_pick_item(query: str, items: list[dict[str, Any]]) -> dict[str, Any] | None:
+    normalized = _match_text(query)
+    if not items:
+        return None
+    scored: list[tuple[int, int, dict[str, Any]]] = []
+    for index, item in enumerate(items):
+        name = _match_text(item.get("placeName") or item.get("name") or item.get("place_name"))
+        address = _match_text(item.get("placeAddress") or item.get("address") or item.get("place_address"))
+        score = 0
+        if name == normalized:
+            score += 100
+        if address == normalized:
+            score += 90
+        if normalized and normalized in name:
+            score += 40
+        if normalized and normalized in address:
+            score += 30
+        if name.startswith(normalized[:4]):
+            score += 10
+        scored.append((score, -index, item))
+    scored.sort(key=lambda pair: (pair[0], pair[1]), reverse=True)
+    return scored[0][2] if scored else items[0]
+
+
+def _mappls_item_coordinates(item: dict[str, Any]) -> tuple[float | None, float | None]:
+    lat_candidates = [
+        item.get("latitude"),
+        item.get("lat"),
+        item.get("entryLatitude"),
+    ]
+    lon_candidates = [
+        item.get("longitude"),
+        item.get("lon"),
+        item.get("lng"),
+        item.get("entryLongitude"),
+    ]
+    lat = next((candidate for candidate in lat_candidates if candidate is not None), None)
+    lon = next((candidate for candidate in lon_candidates if candidate is not None), None)
+    try:
+        return float(lat), float(lon)
+    except (TypeError, ValueError):
+        return None, None
+
+
+def _mappls_geocode_text(client: httpx.Client, address: str, *, bias_lat: float | None = None, bias_lon: float | None = None) -> tuple[float | None, float | None]:
+    query = (address or "").strip()
+    if not query or not _has_mappls():
+        return None, None
+    params: dict[str, Any] = {
+        "address": query,
+        "itemCount": 1,
+        "bias": 1,
+        "region": "IND",
+    }
+    if bias_lat is not None and bias_lon is not None:
+        params["location"] = f"{bias_lat},{bias_lon}"
+    try:
+        payload = _mappls_request_json(client, _mappls_geocode_url(), params)
+    except Exception:
+        return None, None
+    items = _mappls_items(payload)
+    for item in items:
+        lat, lon = _mappls_item_coordinates(item)
+        if lat is not None and lon is not None:
+            return lat, lon
+    return None, None
+
+
+def _mappls_location_context(client: httpx.Client, location: str) -> LocationContext | None:
+    normalized = _normalize_query(location)
+    if not normalized or not _has_mappls():
+        return None
+    anchor_item, _ = _supported_location_anchor(normalized)
+    bias_lat = float(anchor_item["lat"]) if anchor_item is not None else None
+    bias_lon = float(anchor_item["lon"]) if anchor_item is not None else None
+    queries = [
+        normalized,
+        f"{normalized}, Maharashtra, India",
+        f"{normalized}, Mumbai, Maharashtra, India",
+        f"{normalized}, Borivali, Mumbai, Maharashtra, India",
+        f"{normalized}, Dahisar, Mumbai, Maharashtra, India",
+    ]
+    for query in queries:
+        try:
+            payload = _mappls_request_json(
+                client,
+                _mappls_textsearch_url(),
+                {
+                    "query": query,
+                    "region": "IND",
+                    **({"location": f"{bias_lat},{bias_lon}"} if bias_lat is not None and bias_lon is not None else {}),
+                },
+            )
+            items = _mappls_items(payload)
+            if not items:
+                payload = _mappls_request_json(
+                    client,
+                    _mappls_autosuggest_url(),
+                    {
+                        "query": query,
+                        "location": f"{bias_lat},{bias_lon}" if bias_lat is not None and bias_lon is not None else None,
+                    },
+                )
+                items = _mappls_items(payload)
+            picked = _mappls_pick_item(normalized, items)
+            if not picked:
+                continue
+            lat, lon = _mappls_item_coordinates(picked)
+            if lat is None or lon is None:
+                address = _extract_text(picked.get("placeAddress"), picked.get("place_name"), picked.get("placeName"), picked.get("address"))
+                if address:
+                    geocode = _mappls_request_json(
+                        client,
+                        _mappls_geocode_url(),
+                        {
+                            "address": address,
+                            "itemCount": 1,
+                            "bias": 1,
+                            "podFilter": "hna",
+                            "region": "IND",
+                        },
+                    )
+                    geocode_items = _mappls_items(geocode)
+                    geocode_picked = geocode_items[0] if geocode_items else None
+                    if geocode_picked:
+                        lat, lon = _mappls_item_coordinates(geocode_picked)
+                        if lat is None or lon is None:
+                            lat, lon = _mappls_item_coordinates(picked)
+            if lat is None or lon is None:
+                continue
+            label = _extract_text(
+                picked.get("placeName"),
+                picked.get("name"),
+                picked.get("place_name"),
+                picked.get("placeAddress"),
+                normalized,
+            ) or normalized
+            if _is_supported_region(lat, lon) or anchor_item is not None:
+                return LocationContext(
+                    label=label,
+                    lat=lat,
+                    lon=lon,
+                    place_id=_extract_text(picked.get("eLoc"), picked.get("place_id"), picked.get("placeId")),
+                    source="query",
+                )
+        except Exception:
+            continue
+    return None
+
+
+def _mappls_reverse_location(client: httpx.Client, lat: float, lon: float) -> LocationContext | None:
+    if not _has_mappls():
+        return None
+    try:
+        payload = _mappls_request_json(
+            client,
+            _mappls_reverse_geocode_url(),
+            {
+                "lat": lat,
+                "lng": lon,
+                "region": "IND",
+            },
+        )
+    except Exception:
+        return None
+    items = _mappls_items(payload)
+    item = items[0] if items else payload
+    if not isinstance(item, dict):
+        return None
+    resolved_lat, resolved_lon = _mappls_item_coordinates(item)
+    label = _extract_text(
+        item.get("formattedAddress"),
+        item.get("placeAddress"),
+        item.get("formatted_address"),
+        item.get("placeName"),
+        item.get("name"),
+    ) or "Current location"
+    return LocationContext(
+        label=label,
+        lat=resolved_lat if resolved_lat is not None else lat,
+        lon=resolved_lon if resolved_lon is not None else lon,
+        place_id=_extract_text(item.get("eLoc"), item.get("place_id"), item.get("placeId")),
+        source="gps",
+    )
+
+
+def _mappls_contact_search(client: httpx.Client, origin: LocationContext, kind: str) -> list[dict[str, Any]]:
+    if not _has_mappls():
+        return []
+    origin_text = _match_text(origin.label)
+    keyword_sets = {
+        "vet": ["veterinary"],
+        "rescue": ["animal rescue", "rescue", "animal welfare"],
+    }
+    fallback_keywords = {
+        "vet": ["vet", "animal hospital", "animal clinic", "pet clinic", "pet hospital"],
+        "rescue": [
+            "rescue",
+            "shelter",
+            "animal shelter",
+            "animal welfare",
+            "animal aid",
+            "animal help",
+            "welfare organization",
+            "spca",
+            "ngo",
+            "foundation",
+            "trust",
+            "society",
+        ],
+    }
+    keywords = keyword_sets.get(kind, ["vet"])
+    fallback = fallback_keywords.get(kind, [])
+    results: list[dict[str, Any]] = []
+
+    def fetch_keyword(keyword: str, radius_meters: int) -> list[dict[str, Any]]:
+        local_results: list[dict[str, Any]] = []
+        local_seen: set[str] = set()
+        with _client() as keyword_client:
+            try:
+                payload = _mappls_request_json(
+                    keyword_client,
+                    _mappls_nearby_url(),
+                    {
+                        "keywords": keyword,
+                        "refLocation": f"{origin.lat},{origin.lon}",
+                        "region": "IND",
+                        "radius": radius_meters,
+                        "page": 1,
+                    },
+                )
+            except Exception:
+                return []
+            for item in _mappls_items(payload):
+                name = _extract_text(item.get("placeName"), item.get("name"))
+                address = _extract_text(item.get("placeAddress"), item.get("address")) or "Unknown area"
+                e_loc = _extract_text(item.get("eLoc"), item.get("eloc"), item.get("placeId"))
+                key = (e_loc or name or address).casefold()
+                if not key or key in local_seen:
+                    continue
+                local_seen.add(key)
+                lat, lon = _mappls_item_coordinates(item)
+                distance_km = None
+                if lat is not None and lon is not None:
+                    distance_km = haversine_km(origin.lat, origin.lon, lat, lon)
+                    if distance_km * 1000 > radius_meters:
+                        continue
+                phone = _extract_text(item.get("mobileNo"), item.get("landlineNo"), item.get("phone"))
+                website = _extract_text(item.get("website"))
+                maps_target = address or name or origin.label
+                local_results.append(
+                    {
+                        "id": len(local_results) + 1,
+                        "name": name or ("Nearby Vet" if kind == "vet" else "Nearby Rescue"),
+                        "address": address,
+                        "phone": phone or "Not available",
+                        "area": address,
+                        "distance_km": round(distance_km, 3) if distance_km is not None else None,
+                        "distance_label": distance_label(distance_km) if distance_km is not None else None,
+                        "website": website,
+                        "opening_hours": _extract_text(item.get("hourOfOperation"), item.get("opening_hours")),
+                        "maps_link": map_link(lat, lon) if lat is not None and lon is not None else f"https://www.google.com/maps/search/?api=1&query={maps_target}",
+                    }
+                )
+                if len(local_results) >= DEFAULT_RESULT_LIMIT:
+                    break
+        return local_results
+
+    def fetch_keywords(radius_meters: int, active_keywords: list[str]) -> list[dict[str, Any]]:
+        if not active_keywords:
+            return []
+        local_results: list[dict[str, Any]] = []
+        with ThreadPoolExecutor(max_workers=min(2, len(active_keywords))) as executor:
+            futures = [executor.submit(fetch_keyword, keyword, radius_meters) for keyword in active_keywords]
+            for future in as_completed(futures):
+                try:
+                    local_results.extend(future.result() or [])
+                except Exception:
+                    continue
+        deduped: list[dict[str, Any]] = []
+        seen_items: set[str] = set()
+        for item in local_results:
+            key = f"{_match_text(item.get('name'))}|{_match_text(item.get('address'))}|{item.get('maps_link') or ''}"
+            if key in seen_items:
+                continue
+            seen_items.add(key)
+            deduped.append(item)
+        deduped.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
+        return deduped[:DEFAULT_RESULT_LIMIT]
+
+    nearby_radius = MAPPLS_NEARBY_CONTACT_RADIUS_METERS
+    nearby_results = fetch_keywords(nearby_radius, keywords[:2])
+    if nearby_results:
+        return nearby_results
+
+    far_results = fetch_keywords(MAPPLS_FAR_CONTACT_RADIUS_METERS, keywords[:2] + fallback[:2])
+    return far_results
+
+
+def _contact_radius_for_origin(origin: LocationContext) -> int:
+    origin_text = _match_text(origin.label)
+    if any(token in origin_text for token in ("ic colony", "eksar", "gorai", "st francis", "mount poinsur", "shimpoli", "saibaba nagar", "chikuwadi", "vazira naka", "mandapeshwar", "ketkipada", "rawalpada", "nancy colony", "ashok van")):
+        return 2200
+    if any(token in origin_text for token in ("borivali west", "borivali east", "dahisar west", "dahisar east", "borivali", "dahisar")):
+        return 3500
+    return 5000
 
 
 def _cache_get(cache: dict, key: tuple[Any, ...], ttl_seconds: int):
@@ -1001,6 +1293,10 @@ def _ip_geolocate(client: httpx.Client, client_ip: str | None) -> LocationContex
 def _resolve_location(client: httpx.Client, location: str | None, lat: float | None, lon: float | None, client_ip: str | None) -> LocationContext | None:
     if lat is not None and lon is not None:
         try:
+            if _has_mappls():
+                resolved = _mappls_reverse_location(client, float(lat), float(lon))
+                if resolved:
+                    return resolved
             if settings.geoapify_api_key:
                 resolved = _reverse_geocode(client, float(lat), float(lon))
                 if resolved:
@@ -1010,6 +1306,25 @@ def _resolve_location(client: httpx.Client, location: str | None, lat: float | N
         return LocationContext(label="Current location", lat=float(lat), lon=float(lon), source="gps")
 
     if location:
+        anchor_item, _ = _supported_location_anchor(location)
+        if anchor_item is not None:
+            normalized = _normalize_query(location) or str(anchor_item["label"])
+            normalized_text = _match_text(normalized)
+            label = normalized if " " in normalized_text else str(anchor_item["label"])
+            return LocationContext(
+                label=label,
+                lat=float(anchor_item["lat"]),
+                lon=float(anchor_item["lon"]),
+                source="query",
+            )
+        try:
+            if _has_mappls():
+                mappls_resolved = _mappls_location_context(client, location)
+                if mappls_resolved:
+                    return mappls_resolved
+        except Exception:
+            pass
+
         try:
             if _has_google_places():
                 google_resolved = _google_location_context(client, location)
@@ -1066,6 +1381,39 @@ def preview_location_resolution(
 
     normalized = _normalize_query(location)
     if normalized:
+        anchor_item, _ = _supported_location_anchor(normalized)
+        if anchor_item is not None:
+            normalized_text = _match_text(normalized)
+            label = normalized if " " in normalized_text else str(anchor_item["label"])
+            return {
+                "status": "nearest_supported_match",
+                "message": f"Nearest supported match: {label}",
+                "label": label,
+                "lat": float(anchor_item["lat"]),
+                "lon": float(anchor_item["lon"]),
+            }
+        if _has_mappls():
+            try:
+                with _client() as client:
+                    mappls_resolved = _mappls_location_context(client, normalized)
+                    if mappls_resolved:
+                        exact = normalized.lower() == (mappls_resolved.label or "").strip().lower()
+                        status = "exact_place_found" if exact else "nearest_supported_match"
+                        message = (
+                            f"Exact place found: {mappls_resolved.label}"
+                            if exact
+                            else f"Nearest supported match: {mappls_resolved.label}"
+                        )
+                        return {
+                            "status": status,
+                            "message": message,
+                            "label": mappls_resolved.label,
+                            "lat": mappls_resolved.lat,
+                            "lon": mappls_resolved.lon,
+                        }
+            except Exception:
+                pass
+
         if _has_google_places():
             try:
                 with _client() as client:
@@ -1335,9 +1683,94 @@ def _expand_search_terms(kind: str) -> list[str | None]:
     ]
 
 
+def _location_specific_search_terms(origin: LocationContext, kind: str) -> list[str | None]:
+    origin_label = _match_text(origin.label)
+    terms: list[str | None] = []
+
+    if kind == "vet":
+        if "borivali" in origin_label:
+            terms.extend(
+                [
+                    "Vetic",
+                    "Sai Pet Clinic",
+                    "The Kozy Vet",
+                    "Pet Animal Clinic",
+                    "borivali vet",
+                    "borivali veterinary",
+                    "borivali animal hospital",
+                    "borivali animal clinic",
+                    "borivali pet clinic",
+                    "borivali west vet",
+                    "borivali east vet",
+                    "ic colony vet",
+                    "eksar vet",
+                    "gorai vet",
+                    "saibaba nagar vet",
+                    "shimpoli vet",
+                    "new link road vet",
+                    "sv road borivali vet",
+                    "borivali station vet",
+                ]
+            )
+        if "dahisar" in origin_label or "mount poinsur" in origin_label or "st francis" in origin_label:
+            terms.extend(
+                [
+                    "Blue7 Vets",
+                    "Dr Vikram Veterinary Clinic",
+                    "Pets Clinic",
+                    "dahisar vet",
+                    "dahisar veterinary",
+                    "dahisar animal hospital",
+                    "dahisar animal clinic",
+                    "dahisar pet clinic",
+                    "dahisar east vet",
+                    "dahisar west vet",
+                    "st francis institute of technology vet",
+                    "mount poinsur vet",
+                    "mandapeshwar vet",
+                    "ketkipada vet",
+                    "rawalpada vet",
+                    "nancy colony vet",
+                    "ashok van vet",
+                    "sv road dahisar vet",
+                ]
+            )
+    else:
+        if "borivali" in origin_label:
+            terms.extend(
+                [
+                    "borivali rescue",
+                    "borivali animal rescue",
+                    "borivali shelter",
+                    "borivali spca",
+                ]
+            )
+        if "dahisar" in origin_label or "mount poinsur" in origin_label or "st francis" in origin_label:
+            terms.extend(
+                [
+                    "dahisar rescue",
+                    "dahisar animal rescue",
+                    "dahisar shelter",
+                    "dahisar spca",
+                ]
+            )
+
+    seen: set[str] = set()
+    ordered: list[str | None] = []
+    for term in terms:
+        lowered = (term or "").strip().lower()
+        if not lowered or lowered in seen:
+            continue
+        seen.add(lowered)
+        ordered.append(term)
+    return ordered
+
+
 def _search_kind(client: httpx.Client, origin: LocationContext, kind: str) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     seen: set[str] = set()
+    origin_text = _match_text(origin.label)
+    is_targeted_region = any(token in origin_text for token in ("borivali", "dahisar"))
 
     def collect(features: list[dict[str, Any]], *, max_distance_km: float | None = None) -> None:
         for feature in features:
@@ -1360,16 +1793,21 @@ def _search_kind(client: httpx.Client, origin: LocationContext, kind: str) -> li
                 return
 
     search_terms = _expand_search_terms(kind)
+    search_terms = _location_specific_search_terms(origin, kind) + search_terms
     category_groups = VET_CONTACT_CATEGORY_GROUPS if kind == "vet" else RESCUE_CONTACT_CATEGORY_GROUPS
+    if is_targeted_region:
+        search_terms = search_terms[:4]
+        category_groups = category_groups[:2]
 
     def search_round(*, max_distance_km: float | None, radius_meters: int) -> None:
+        use_place_filters = (False,) if is_targeted_region else (False, True)
         for categories in category_groups:
             if len(results) >= DEFAULT_RESULT_LIMIT:
                 return
             for term in search_terms:
                 if len(results) >= DEFAULT_RESULT_LIMIT:
                     return
-                for use_place_filter in (False, True):
+                for use_place_filter in use_place_filters:
                     if len(results) >= DEFAULT_RESULT_LIMIT:
                         return
                     try:
@@ -1385,10 +1823,12 @@ def _search_kind(client: httpx.Client, origin: LocationContext, kind: str) -> li
                     except Exception:
                         features = []
                     collect(features, max_distance_km=max_distance_km)
+                    if results:
+                        return
                     if len(results) >= DEFAULT_RESULT_LIMIT:
                         return
 
-    search_round(max_distance_km=6.0, radius_meters=NEARBY_CONTACT_RADIUS_METERS)
+    search_round(max_distance_km=5.0, radius_meters=NEARBY_CONTACT_RADIUS_METERS)
     if results:
         return results
 
@@ -1454,6 +1894,23 @@ def _build_contact(
         props.get("county"),
     ) or "Unknown area"
 
+    if lat is None or lon is None:
+        lookup_query = formatted_address if formatted_address != "Unknown area" else name
+        resolved_contact_location = None
+        if lookup_query and httpx is not None:
+            try:
+                if _has_mappls():
+                    resolved_contact_location = _mappls_location_context(client, lookup_query)
+                if resolved_contact_location is None and _has_google_places():
+                    resolved_contact_location = _google_location_context(client, lookup_query)
+                if resolved_contact_location is None:
+                    resolved_contact_location = _try_precise_geocode_location(client, lookup_query)
+            except Exception:
+                resolved_contact_location = None
+        if resolved_contact_location is not None:
+            lat = resolved_contact_location.lat
+            lon = resolved_contact_location.lon
+
     distance = props.get("distance")
     distance_km = None
     if isinstance(distance, (int, float)):
@@ -1503,9 +1960,29 @@ def get_contacts_for_area(
     lng: float | None,
     *,
     client_ip: str | None = None,
+    resolved_origin: LocationContext | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     if httpx is None:
         return [], []
+
+    def dedupe_contacts(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        deduped: list[dict[str, Any]] = []
+        seen_items: set[str] = set()
+        for item in items:
+            key = "|".join(
+                [
+                    _match_text(item.get("name")),
+                    _match_text(item.get("address") or item.get("area")),
+                    _match_text(item.get("maps_link")),
+                ]
+            )
+            if not key.strip("|"):
+                continue
+            if key in seen_items:
+                continue
+            seen_items.add(key)
+            deduped.append(item)
+        return deduped
 
     cache_key = (
         (_normalize_query(location) or "").lower(),
@@ -1517,14 +1994,58 @@ def get_contacts_for_area(
     if cached is not None:
         return cached
 
+    def load_fallback_contacts(kind: str, origin: LocationContext) -> list[dict[str, Any]]:
+        features: list[dict[str, Any]] = []
+        try:
+            features = _search_kind(client, origin, kind)
+        except Exception:
+            features = []
+        contacts: list[dict[str, Any]] = []
+        for index, feature in enumerate(features, start=1):
+            try:
+                contact = _build_contact(client, feature, origin, kind, index)
+            except Exception:
+                contact = None
+            if contact:
+                contacts.append(contact)
+        return contacts
+
+    def cache_and_return(rescue_result: list[dict[str, Any]], vet_result: list[dict[str, Any]]):
+        rescue_result = dedupe_contacts(rescue_result)
+        vet_result = dedupe_contacts(vet_result)
+        rescue_result.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
+        vet_result.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
+        result = (rescue_result, vet_result)
+        _cache_set(_CONTACT_CACHE, cache_key, result, CONTACT_CACHE_TTL_SECONDS)
+        return result
+
     rescue_contacts: list[dict[str, Any]] = []
     vet_contacts: list[dict[str, Any]] = []
 
     try:
         with _client() as client:
-            origin = _resolve_location(client, location, lat, lng, client_ip)
+            origin = resolved_origin or _resolve_location(client, location, lat, lng, client_ip)
             if origin is None:
                 return [], []
+
+            if _has_mappls():
+                try:
+                    with ThreadPoolExecutor(max_workers=2) as executor:
+                        rescue_future = executor.submit(_mappls_contact_search, client, origin, "rescue")
+                        vet_future = executor.submit(_mappls_contact_search, client, origin, "vet")
+                        try:
+                            rescue_contacts = rescue_future.result()
+                        except Exception:
+                            rescue_contacts = []
+                        try:
+                            vet_contacts = vet_future.result()
+                        except Exception:
+                            vet_contacts = []
+                except Exception:
+                    rescue_contacts = []
+                    vet_contacts = []
+                if rescue_contacts or vet_contacts:
+                    return cache_and_return(rescue_contacts, vet_contacts)
 
             if _has_google_places():
                 try:
@@ -1536,11 +2057,7 @@ def get_contacts_for_area(
                 except Exception:
                     vet_contacts = []
                 if rescue_contacts or vet_contacts:
-                    rescue_contacts.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
-                    vet_contacts.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
-                    result = (rescue_contacts, vet_contacts)
-                    _cache_set(_CONTACT_CACHE, cache_key, result, CONTACT_CACHE_TTL_SECONDS)
-                    return result
+                    return cache_and_return(rescue_contacts, vet_contacts)
 
             try:
                 rescue_features = _search_kind(client, origin, "rescue")
@@ -1569,11 +2086,7 @@ def get_contacts_for_area(
     except Exception:
         return [], []
 
-    rescue_contacts.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
-    vet_contacts.sort(key=lambda item: item.get("distance_km") if isinstance(item.get("distance_km"), (int, float)) else float("inf"))
-    result = (rescue_contacts, vet_contacts)
-    _cache_set(_CONTACT_CACHE, cache_key, result, CONTACT_CACHE_TTL_SECONDS)
-    return result
+    return cache_and_return(rescue_contacts, vet_contacts)
 
 
 def autocomplete_locations(query: str, *, limit: int = 12) -> list[dict[str, Any]]:
@@ -1598,6 +2111,7 @@ def autocomplete_locations(query: str, *, limit: int = 12) -> list[dict[str, Any
             variant_lat = None
             variant_lon = None
             variant_secondary = None
+            variant_city = str(anchor_item["city"]) if anchor_item is not None else "Mumbai"
             if httpx is not None:
                 try:
                     with _client() as client:
@@ -1605,28 +2119,30 @@ def autocomplete_locations(query: str, *, limit: int = 12) -> list[dict[str, Any
                         if anchor_item is not None:
                             variant_queries.insert(0, f"{variant}, {anchor_item['city']}, Maharashtra, India")
                         for variant_query in variant_queries:
-                            resolved = _google_location_context(client, variant_query) if _has_google_places() else None
+                            resolved = _mappls_location_context(client, variant_query) if _has_mappls() else None
+                            if resolved is None and _has_google_places():
+                                resolved = _google_location_context(client, variant_query)
                             if resolved is None:
                                 resolved = _try_precise_geocode_location(client, variant_query)
                             if resolved and _is_supported_region(resolved.lat, resolved.lon):
                                 variant_label = resolved.label or variant
                                 variant_lat = round(float(resolved.lat), 6)
                                 variant_lon = round(float(resolved.lon), 6)
-                                variant_secondary = f"{item['city']}, Maharashtra"
+                                variant_secondary = f"{variant}, {variant_city}, Maharashtra"
                                 break
                 except Exception:
                     pass
             if variant_lat is None and anchor_item is not None:
                 variant_lat = round(float(anchor_item["lat"]), 6)
                 variant_lon = round(float(anchor_item["lon"]), 6)
-                variant_secondary = f"{variant}, {anchor_item['city']}, Maharashtra"
+                variant_secondary = f"{variant}, {variant_city}, Maharashtra"
             if variant_lat is None and anchor_item is None:
                 variant_secondary = f"{variant}, Mumbai, Maharashtra"
             suggestions.append(
                 {
                     "label": variant_label,
                     "main_text": variant_label,
-                    "secondary_text": variant_secondary or f"{item['city']}, Maharashtra",
+                    "secondary_text": variant_secondary or f"{variant_city}, Maharashtra",
                     "lat": variant_lat,
                     "lon": variant_lon,
                     "place_id": None,
@@ -1634,7 +2150,95 @@ def autocomplete_locations(query: str, *, limit: int = 12) -> list[dict[str, Any
                 }
             )
 
-    if _has_google_places():
+    if _has_mappls():
+        try:
+            with _client() as client:
+                bias_item, _ = _supported_location_anchor(normalized)
+                bias_lat = float(bias_item["lat"]) if bias_item is not None else None
+                bias_lon = float(bias_item["lon"]) if bias_item is not None else None
+                candidate_queries = [
+                    normalized,
+                    f"{normalized}, Borivali, Mumbai, Maharashtra, India",
+                    f"{normalized}, Dahisar, Mumbai, Maharashtra, India",
+                ]
+                for candidate_query in candidate_queries:
+                    payload = _mappls_request_json(
+                        client,
+                        _mappls_autosuggest_url(),
+                        {
+                            "query": candidate_query,
+                            **({"location": f"{bias_lat},{bias_lon}"} if bias_lat is not None and bias_lon is not None else {}),
+                        },
+                    )
+                    items = _mappls_items(payload)
+                    if not items:
+                        payload = _mappls_request_json(
+                            client,
+                            _mappls_textsearch_url(),
+                            {
+                                "query": candidate_query,
+                                "region": "IND",
+                                **({"location": f"{bias_lat},{bias_lon}"} if bias_lat is not None and bias_lon is not None else {}),
+                            },
+                        )
+                        items = _mappls_items(payload)
+                    for item in items[: max(5, limit)]:
+                        label = _extract_text(item.get("placeName"), item.get("place_name"), item.get("name"), candidate_query) or candidate_query
+                        address = _extract_text(item.get("placeAddress"), item.get("address"), item.get("formattedAddress"), label) or label
+                        lat, lon = _mappls_item_coordinates(item)
+                        if lat is None or lon is None:
+                            geocode_payload = _mappls_request_json(
+                                client,
+                                _mappls_geocode_url(),
+                                {
+                                    "address": address,
+                                    "itemCount": 1,
+                                    "bias": 1,
+                                    "region": "IND",
+                                },
+                            )
+                            geocode_items = _mappls_items(geocode_payload)
+                            geocode_item = geocode_items[0] if geocode_items else None
+                            if geocode_item:
+                                lat, lon = _mappls_item_coordinates(geocode_item)
+                                if geocode_item.get("placeName"):
+                                    label = _extract_text(geocode_item.get("placeName"), label) or label
+                                if geocode_item.get("placeAddress"):
+                                    address = _extract_text(geocode_item.get("placeAddress"), address) or address
+                        if lat is None or lon is None:
+                            continue
+                        if not _is_supported_region(lat, lon):
+                            continue
+                        suggestions.append(
+                            {
+                                "label": label,
+                                "main_text": label,
+                                "secondary_text": address,
+                                "lat": round(float(lat), 6),
+                                "lon": round(float(lon), 6),
+                                "place_id": _extract_text(item.get("eLoc"), item.get("eloc"), item.get("placeId")),
+                                "address": address,
+                        }
+                    )
+        except Exception:
+            pass
+
+    if _has_mappls() and suggestions and len(suggestions) >= max(5, min(limit, 8)):
+        deduped: list[dict[str, Any]] = []
+        seen_entries: set[tuple[str, str, str]] = set()
+        for item in suggestions:
+            label = str(item.get("label") or "").strip()
+            lat = "" if item.get("lat") is None else str(item.get("lat"))
+            lon = "" if item.get("lon") is None else str(item.get("lon"))
+            key = (label.lower(), lat, lon)
+            if not label or key in seen_entries:
+                continue
+            seen_entries.add(key)
+            deduped.append(item)
+        _cache_set(_AUTOCOMPLETE_CACHE, cache_key, deduped[:limit], AUTOCOMPLETE_CACHE_TTL_SECONDS)
+        return deduped[:limit]
+
+    if _has_google_places() and not _has_mappls():
         try:
             with _client() as client:
                 bias_item, _ = _supported_location_anchor(normalized)
@@ -1685,7 +2289,7 @@ def autocomplete_locations(query: str, *, limit: int = 12) -> list[dict[str, Any
     if httpx is not None and should_prefer_precise:
         try:
             with _client() as client:
-                precise = _try_precise_geocode_location(client, normalized)
+                precise = _mappls_location_context(client, normalized) if _has_mappls() else _try_precise_geocode_location(client, normalized)
                 if precise:
                     suggestions.append(
                         {
@@ -1717,7 +2321,7 @@ def autocomplete_locations(query: str, *, limit: int = 12) -> list[dict[str, Any
     if not suggestions and httpx is not None and len(query_text) >= 3:
         try:
             with _client() as client:
-                resolved = _try_precise_geocode_location(client, normalized)
+                resolved = _mappls_location_context(client, normalized) if _has_mappls() else _try_precise_geocode_location(client, normalized)
                 if resolved:
                     suggestions.append(
                         {
